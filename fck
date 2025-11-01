@@ -1,0 +1,229 @@
+-- m2f.lua
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+local RunService = game:GetService("RunService")
+
+-- UI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 300, 0, 400)
+Frame.Position = UDim2.new(0.5, -150, 0.5, -200)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = "m2f Panel"
+Title.TextScaled = true
+Title.Parent = Frame
+
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(1, 0, 0, 30)
+MinimizeButton.Position = UDim2.new(0, 0, 1, -30)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.Text = "Minimize"
+MinimizeButton.Parent = Frame
+
+local AutoFishingButton = Instance.new("TextButton")
+AutoFishingButton.Size = UDim2.new(1, 0, 0, 30)
+AutoFishingButton.Position = UDim2.new(0, 0, 0, 50)
+AutoFishingButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+AutoFishingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoFishingButton.Text = "Auto Fishing"
+AutoFishingButton.Parent = Frame
+
+local AutoPerfectButton = Instance.new("TextButton")
+AutoPerfectButton.Size = UDim2.new(1, 0, 0, 30)
+AutoPerfectButton.Position = UDim2.new(0, 0, 0, 80)
+AutoPerfectButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+AutoPerfectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoPerfectButton.Text = "Auto Perfect"
+AutoPerfectButton.Parent = Frame
+
+local AutoSellButton = Instance.new("TextButton")
+AutoSellButton.Size = UDim2.new(1, 0, 0, 30)
+AutoSellButton.Position = UDim2.new(0, 0, 0, 110)
+AutoSellButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+AutoSellButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoSellButton.Text = "Auto Sell"
+AutoSellButton.Parent = Frame
+
+local TeleportToPlayerButton = Instance.new("TextButton")
+TeleportToPlayerButton.Size = UDim2.new(1, 0, 0, 30)
+TeleportToPlayerButton.Position = UDim2.new(0, 0, 0, 140)
+TeleportToPlayerButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+TeleportToPlayerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+TeleportToPlayerButton.Text = "Teleport to Player"
+TeleportToPlayerButton.Parent = Frame
+
+local AntiFloatButton = Instance.new("TextButton")
+AntiFloatButton.Size = UDim2.new(1, 0, 0, 30)
+AntiFloatButton.Position = UDim2.new(0, 0, 0, 170)
+AntiFloatButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+AntiFloatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AntiFloatButton.Text = "Anti Floating"
+AntiFloatButton.Parent = Frame
+
+local UnlimitedOxygenButton = Instance.new("TextButton")
+UnlimitedOxygenButton.Size = UDim2.new(1, 0, 0, 30)
+UnlimitedOxygenButton.Position = UDim2.new(0, 0, 0, 200)
+UnlimitedOxygenButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+UnlimitedOxygenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+UnlimitedOxygenButton.Text = "Unlimited Oxygen"
+UnlimitedOxygenButton.Parent = Frame
+
+-- Button Click Events
+local isMinimized = false
+MinimizeButton.MouseButton1Click:Connect(function()
+    if isMinimized then
+        Frame.Size = UDim2.new(0, 300, 0, 400)
+        isMinimized = false
+    else
+        Frame.Size = UDim2.new(0, 300, 0, 30)
+        isMinimized = true
+    end
+end)
+
+local autoFishing = false
+AutoFishingButton.MouseButton1Click:Connect(function()
+    autoFishing = not autoFishing
+    if autoFishing then
+        AutoFishingButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        spawn(function()
+            while autoFishing do
+                -- Simulate fishing action
+                local fishingTool = player.Backpack:FindFirstChild("FishingRod") or player.Character:FindFirstChild("FishingRod")
+                if fishingTool then
+                    fishingTool:Activate()
+                end
+                wait(1)
+            end
+        end)
+    else
+        AutoFishingButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    end
+end)
+
+local autoPerfect = false
+AutoPerfectButton.MouseButton1Click:Connect(function()
+    autoPerfect = not autoPerfect
+    if autoPerfect then
+        AutoPerfectButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        spawn(function()
+            while autoPerfect do
+                -- Simulate perfect fishing action
+                local fishingTool = player.Backpack:FindFirstChild("FishingRod") or player.Character:FindFirstChild("FishingRod")
+                if fishingTool then
+                    fishingTool:Activate()
+                    wait(0.5) -- Adjust timing as needed
+                    mouse.KeyDown:Fire("e") -- Assuming 'e' is the key for perfect fishing
+                end
+                wait(1)
+            end
+        end)
+    else
+        AutoPerfectButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    end
+end)
+
+local autoSell = false
+AutoSellButton.MouseButton1Click:Connect(function()
+    autoSell = not autoSell
+    if autoSell then
+        AutoSellButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        spawn(function()
+            while autoSell do
+                -- Simulate selling caught fish
+                local fishInventory = player.Backpack:FindFirstChild("FishInventory") or player.Character:FindFirstChild("FishInventory")
+                if fishInventory then
+                    for _, fish in pairs(fishInventory:GetChildren()) do
+                        if fish:IsA("Tool") then
+                            fish:Destroy()
+                        end
+                    end
+                end
+                wait(1)
+            end
+        end)
+    else
+        AutoSellButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    end
+end)
+
+local teleportToPlayer = false
+TeleportToPlayerButton.MouseButton1Click:Connect(function()
+    teleportToPlayer = not teleportToPlayer
+    if teleportToPlayer then
+        TeleportToPlayerButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        spawn(function()
+            while teleportToPlayer do
+                -- Update player list every second
+                local playersList = {}
+                for _, v in pairs(Players:GetPlayers()) do
+                    if v ~= player then
+                        table.insert(playersList, v)
+                    end
+                end
+
+                -- Teleport to a random player
+                if #playersList > 0 then
+                    local targetPlayer = playersList[math.random(#playersList)]
+                    player.Character:SetPrimaryPartCFrame(targetPlayer.Character:GetPrimaryPartCFrame())
+                end
+
+                wait(1)
+            end
+        end)
+    else
+        TeleportToPlayerButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    end
+end)
+
+local antiFloat = false
+AntiFloatButton.MouseButton1Click:Connect(function()
+    antiFloat = not antiFloat
+    if antiFloat then
+        AntiFloatButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        spawn(function()
+            while antiFloat do
+                -- Prevent floating
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.PlatformStand = true
+                end
+                wait(1)
+            end
+        end)
+    else
+        AntiFloatButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    end
+end)
+
+local unlimitedOxygen = false
+UnlimitedOxygenButton.MouseButton1Click:Connect(function()
+    unlimitedOxygen = not unlimitedOxygen
+    if unlimitedOxygen then
+        UnlimitedOxygenButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        spawn(function()
+            while unlimitedOxygen do
+                -- Provide unlimited oxygen
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.MaxHealth = 100
+                    humanoid.Health = 100
+                end
+                wait(1)
+            end
+        end)
+    else
+        UnlimitedOxygenButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    end
+end)
