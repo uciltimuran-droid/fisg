@@ -1,0 +1,599 @@
+-- Feature Panel System for Roblox FPS Game
+-- Place this in a LocalScript in StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Feature States
+local Features = {
+    ESP = false,
+    ESPDistance = false,
+    ESPGun = false,
+    Fly = false,
+    NoClip = false,
+    Speed = false,
+    JumpPower = false,
+    GodMode = false
+}
+
+-- Feature Settings
+local Settings = {
+    ESPColor = Color3.fromRGB(0, 255, 0),
+    ESPDistanceColor = Color3.fromRGB(255, 255, 0),
+    ESPGunColor = Color3.fromRGB(255, 0, 0),
+    FlySpeed = 50,
+    WalkSpeed = 16,
+    JumpPower = 50,
+    SpeedMultiplier = 2
+}
+
+-- ESP Variables
+local ESPFolder = Instance.new("Folder")
+ESPFolder.Name = "ESP"
+ESPFolder.Parent = game.CoreGui
+
+local ESPConnections = {}
+local FlyConnection = nil
+local NoClipConnection = nil
+local UpdateConnection = nil
+
+-- Create GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FeaturePanel"
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 350, 0, 400)
+MainFrame.Position = UDim2.new(0, 10, 0, 10)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+-- Corner
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = MainFrame
+
+-- Header
+local Header = Instance.new("Frame")
+Header.Name = "Header"
+Header.Size = UDim2.new(1, 0, 0, 40)
+Header.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Header.BorderSizePixel = 0
+Header.Parent = MainFrame
+
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 8)
+HeaderCorner.Parent = Header
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(0, 200, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "FPS Game Features"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+
+-- Minimize Button
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -40, 0, 5)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MinimizeButton.BorderSizePixel = 0
+MinimizeButton.Text = "-"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.TextSize = 18
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.Parent = Header
+
+local MinimizeCorner = Instance.new("UICorner")
+MinimizeCorner.CornerRadius = UDim.new(0, 4)
+MinimizeCorner.Parent = MinimizeButton
+
+-- Drag Handle (Logo)
+local DragHandle = Instance.new("TextButton")
+DragHandle.Name = "DragHandle"
+DragHandle.Size = UDim2.new(0, 30, 0, 30)
+DragHandle.Position = UDim2.new(1, -80, 0, 5)
+DragHandle.BackgroundColor3 = Color3.fromRGB(70, 130, 200)
+DragHandle.BorderSizePixel = 0
+DragHandle.Text = "≡"
+DragHandle.TextColor3 = Color3.fromRGB(255, 255, 255)
+DragHandle.TextSize = 16
+DragHandle.Font = Enum.Font.GothamBold
+DragHandle.Parent = Header
+
+local DragCorner = Instance.new("UICorner")
+DragCorner.CornerRadius = UDim.new(0, 4)
+DragCorner.Parent = DragHandle
+
+-- Content Frame
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Size = UDim2.new(1, -20, 1, -60)
+ContentFrame.Position = UDim2.new(0, 10, 0, 50)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = MainFrame
+
+-- Scrolling Frame
+local ScrollingFrame = Instance.new("ScrollingFrame")
+ScrollingFrame.Name = "ScrollingFrame"
+ScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+ScrollingFrame.BackgroundTransparency = 1
+ScrollingFrame.BorderSizePixel = 0
+ScrollingFrame.ScrollBarThickness = 4
+ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+ScrollingFrame.Parent = ContentFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 10)
+UIListLayout.Parent = ScrollingFrame
+
+-- Minimized State
+local isMinimized = false
+local originalSize = MainFrame.Size
+
+-- Create Feature Toggle Function
+local function createFeatureToggle(featureName, description, defaultState)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Name = featureName .. "Toggle"
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 50)
+    ToggleFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    ToggleFrame.BorderSizePixel = 0
+    ToggleFrame.Parent = ScrollingFrame
+
+    local ToggleCorner = Instance.new("UICorner")
+    ToggleCorner.CornerRadius = UDim.new(0, 6)
+    ToggleCorner.Parent = ToggleFrame
+
+    local ToggleLabel = Instance.new("TextLabel")
+    ToggleLabel.Name = "Label"
+    ToggleLabel.Size = UDim2.new(0, 200, 0, 25)
+    ToggleLabel.Position = UDim2.new(0, 10, 0, 5)
+    ToggleLabel.BackgroundTransparency = 1
+    ToggleLabel.Text = featureName
+    ToggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleLabel.TextSize = 14
+    ToggleLabel.Font = Enum.Font.GothamBold
+    ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    ToggleLabel.Parent = ToggleFrame
+
+    local DescriptionLabel = Instance.new("TextLabel")
+    DescriptionLabel.Name = "Description"
+    DescriptionLabel.Size = UDim2.new(0, 200, 0, 15)
+    DescriptionLabel.Position = UDim2.new(0, 10, 0, 30)
+    DescriptionLabel.BackgroundTransparency = 1
+    DescriptionLabel.Text = description
+    DescriptionLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    DescriptionLabel.TextSize = 11
+    DescriptionLabel.Font = Enum.Font.Gotham
+    DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
+    DescriptionLabel.Parent = ToggleFrame
+
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Name = "Toggle"
+    ToggleButton.Size = UDim2.new(0, 60, 0, 25)
+    ToggleButton.Position = UDim2.new(1, -70, 0, 12)
+    ToggleButton.BackgroundColor3 = defaultState and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(150, 0, 0)
+    ToggleButton.BorderSizePixel = 0
+    ToggleButton.Text = defaultState and "ON" or "OFF"
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.TextSize = 12
+    ToggleButton.Font = Enum.Font.GothamBold
+    ToggleButton.Parent = ToggleFrame
+
+    local ToggleButtonCorner = Instance.new("UICorner")
+    ToggleButtonCorner.CornerRadius = UDim.new(0, 4)
+    ToggleButtonCorner.Parent = ToggleButton
+
+    ToggleButton.MouseButton1Click:Connect(function()
+        local newState = not Features[featureName]
+        Features[featureName] = newState
+        
+        ToggleButton.BackgroundColor3 = newState and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(150, 0, 0)
+        ToggleButton.Text = newState and "ON" or "OFF"
+        
+        -- Execute feature function
+        if featureName == "ESP" then
+            if newState then
+                CreateESP()
+            else
+                ClearESP()
+            end
+        elseif featureName == "Fly" then
+            if newState then
+                StartFlying()
+            else
+                StopFlying()
+            end
+        elseif featureName == "NoClip" then
+            UpdateNoClip()
+        elseif featureName == "GodMode" then
+            UpdateGodMode()
+        end
+        
+        print(featureName .. ": " .. (newState and "ENABLED" or "DISABLED"))
+    end)
+
+    return ToggleFrame
+end
+
+-- Create all feature toggles
+createFeatureToggle("ESP", "Highlight all players", false)
+createFeatureToggle("ESPDistance", "Show player distances", false)
+createFeatureToggle("ESPGun", "Highlight player weapons", false)
+createFeatureToggle("Fly", "Enable flying (WASD + Space/Shift)", false)
+createFeatureToggle("NoClip", "Walk through walls", false)
+createFeatureToggle("GodMode", "Invincibility mode", false)
+
+-- Speed Slider
+local SpeedFrame = Instance.new("Frame")
+SpeedFrame.Name = "SpeedFrame"
+SpeedFrame.Size = UDim2.new(1, 0, 0, 60)
+SpeedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SpeedFrame.BorderSizePixel = 0
+SpeedFrame.Parent = ScrollingFrame
+
+local SpeedCorner = Instance.new("UICorner")
+SpeedCorner.CornerRadius = UDim.new(0, 6)
+SpeedCorner.Parent = SpeedFrame
+
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Name = "Label"
+SpeedLabel.Size = UDim2.new(0, 200, 0, 25)
+SpeedLabel.Position = UDim2.new(0, 10, 0, 5)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Text = "Walk Speed"
+SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedLabel.TextSize = 14
+SpeedLabel.Font = Enum.Font.GothamBold
+SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpeedLabel.Parent = SpeedFrame
+
+local SpeedValue = Instance.new("TextLabel")
+SpeedValue.Name = "Value"
+SpeedValue.Size = UDim2.new(0, 60, 0, 25)
+SpeedValue.Position = UDim2.new(1, -70, 0, 5)
+SpeedValue.BackgroundTransparency = 1
+SpeedValue.Text = tostring(Settings.WalkSpeed)
+SpeedValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedValue.TextSize = 14
+SpeedValue.Font = Enum.Font.GothamBold
+SpeedValue.Parent = SpeedFrame
+
+local SpeedSlider = Instance.new("TextButton")
+SpeedSlider.Name = "Slider"
+SpeedSlider.Size = UDim2.new(1, -20, 0, 20)
+SpeedSlider.Position = UDim2.new(0, 10, 0, 35)
+SpeedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SpeedSlider.BorderSizePixel = 0
+SpeedSlider.Text = ""
+SpeedSlider.Parent = SpeedFrame
+
+local SliderCorner = Instance.new("UICorner")
+SliderCorner.CornerRadius = UDim.new(0, 4)
+SliderCorner.Parent = SpeedSlider
+
+local SliderFill = Instance.new("Frame")
+SliderFill.Name = "Fill"
+SliderFill.Size = UDim2.new((Settings.WalkSpeed - 16) / (100 - 16), 0, 1, 0)
+SliderFill.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+SliderFill.BorderSizePixel = 0
+SliderFill.Parent = SpeedSlider
+
+local FillCorner = Instance.new("UICorner")
+FillCorner.CornerRadius = UDim.new(0, 4)
+FillCorner.Parent = SliderFill
+
+-- Slider functionality
+local function updateSpeed(value)
+    Settings.WalkSpeed = math.clamp(value, 16, 100)
+    SpeedValue.Text = tostring(math.floor(Settings.WalkSpeed))
+    SliderFill.Size = UDim2.new((Settings.WalkSpeed - 16) / (100 - 16), 0, 1, 0)
+    
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Settings.WalkSpeed
+    end
+end
+
+SpeedSlider.MouseButton1Down:Connect(function()
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        local mouse = UserInputService:GetMouseLocation()
+        local sliderAbsolutePosition = SpeedSlider.AbsolutePosition
+        local sliderAbsoluteSize = SpeedSlider.AbsoluteSize
+        
+        local relativeX = (mouse.X - sliderAbsolutePosition.X) / sliderAbsoluteSize.X
+        relativeX = math.clamp(relativeX, 0, 1)
+        
+        local newSpeed = 16 + (relativeX * (100 - 16))
+        updateSpeed(newSpeed)
+    end)
+    
+    local function disconnect()
+        connection:Disconnect()
+    end
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            disconnect()
+        end
+    end)
+end)
+
+-- Update UI Layout
+coroutine.wrap(function()
+    wait()
+    ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
+end)()
+
+-- ESP Functions
+function CreateESP()
+    ClearESP()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local connection
+            connection = player.CharacterAdded:Connect(function(character)
+                wait(0.5) -- Wait for character to load
+                AddESP(character, player.Name)
+            end)
+            
+            table.insert(ESPConnections, connection)
+            
+            if player.Character then
+                AddESP(player.Character, player.Name)
+            end
+        end
+    end
+    
+    local playerAddedConnection = Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(character)
+            if Features.ESP then
+                wait(0.5)
+                AddESP(character, player.Name)
+            end
+        end)
+    end)
+    
+    table.insert(ESPConnections, playerAddedConnection)
+end
+
+function AddESP(character, playerName)
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = playerName .. "_ESP"
+    highlight.FillColor = Settings.ESPColor
+    highlight.OutlineColor = Settings.ESPColor
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = ESPFolder
+    highlight.Adornee = character
+    
+    -- Add distance label if enabled
+    if Features.ESPDistance then
+        local billboard = Instance.new("BillboardGui")
+        local label = Instance.new("TextLabel")
+        
+        billboard.Name = playerName .. "_Distance"
+        billboard.Adornee = character:WaitForChild("Head")
+        billboard.Size = UDim2.new(0, 200, 0, 40)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = ESPFolder
+        
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = playerName
+        label.TextColor3 = Settings.ESPDistanceColor
+        label.TextSize = 14
+        label.Font = Enum.Font.GothamBold
+        label.Parent = billboard
+        
+        -- Update distance in real-time
+        local distanceConnection
+        distanceConnection = RunService.Heartbeat:Connect(function()
+            if character and character:FindFirstChild("Head") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+                local distance = (character.Head.Position - LocalPlayer.Character.Head.Position).Magnitude
+                label.Text = playerName .. "\n" .. math.floor(distance) .. " studs"
+            else
+                distanceConnection:Disconnect()
+            end
+        end)
+        
+        table.insert(ESPConnections, distanceConnection)
+    end
+    
+    -- Add gun ESP if enabled
+    if Features.ESPGun then
+        local function checkForGuns()
+            for _, tool in pairs(character:GetChildren()) do
+                if tool:IsA("Tool") and not tool:FindFirstChild("GunESP") then
+                    local gunHighlight = Instance.new("Highlight")
+                    gunHighlight.Name = playerName .. "_Gun"
+                    gunHighlight.FillColor = Settings.ESPGunColor
+                    gunHighlight.OutlineColor = Settings.ESPGunColor
+                    gunHighlight.FillTransparency = 0.3
+                    gunHighlight.OutlineTransparency = 0
+                    gunHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    gunHighlight.Parent = ESPFolder
+                    gunHighlight.Adornee = tool
+                    
+                    local espMarker = Instance.new("BoolValue")
+                    espMarker.Name = "GunESP"
+                    espMarker.Parent = tool
+                end
+            end
+        end
+        
+        checkForGuns()
+        character.ChildAdded:Connect(checkForGuns)
+    end
+end
+
+function ClearESP()
+    for _, connection in pairs(ESPConnections) do
+        connection:Disconnect()
+    end
+    ESPConnections = {}
+    
+    ESPFolder:ClearAllChildren()
+end
+
+-- Fly System
+function StartFlying()
+    StopFlying()
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    humanoid.PlatformStand = true
+    
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "FlyVelocity"
+    bodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("UpperTorso")
+    
+    FlyConnection = RunService.Heartbeat:Connect(function()
+        if not Features.Fly or not character or not character:FindFirstChild("HumanoidRootPart") then
+            StopFlying()
+            return
+        end
+        
+        local rootPart = character.HumanoidRootPart
+        local camera = Workspace.CurrentCamera
+        
+        local direction = Vector3.new(0, 0, 0)
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            direction = direction + camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            direction = direction - camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            direction = direction - camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            direction = direction + camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            direction = direction + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            direction = direction - Vector3.new(0, 1, 0)
+        end
+        
+        if direction.Magnitude > 0 then
+            direction = direction.Unit * Settings.FlySpeed
+        end
+        
+        bodyVelocity.Velocity = direction
+    end)
+end
+
+function StopFlying()
+    if FlyConnection then
+        FlyConnection:Disconnect()
+        FlyConnection = nil
+    end
+    
+    local character = LocalPlayer.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+        
+        local flyVelocity = character:FindFirstChild("FlyVelocity")
+        if flyVelocity then
+            flyVelocity:Destroy()
+        end
+    end
+end
+
+-- NoClip System
+function UpdateNoClip()
+    if NoClipConnection then
+        NoClipConnection:Disconnect()
+    end
+    
+    if Features.NoClip then
+        NoClipConnection = RunService.Stepped:Connect(function()
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    end
+end
+
+-- God Mode System
+function UpdateGodMode()
+    if LocalPlayer.Character then
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = not Features.GodMode
+            end
+        end
+    end
+end
+
+-- UI Interactions
+MinimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    
+    if isMinimized then
+        MainFrame.Size = UDim2.new(0, 350, 0, 40)
+        MinimizeButton.Text = "+"
+    else
+        MainFrame.Size = originalSize
+        MinimizeButton.Text = "-"
+    end
+end)
+
+-- Dragging functionality
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(0, startPos.X.Offset + delta.X, 0, startPos.Y.Offset + delta.Y)
+end
+
+DragHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        en
