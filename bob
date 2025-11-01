@@ -1,0 +1,423 @@
+-- Feature System for Roblox FPS Game
+-- Place this in a LocalScript in StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- Feature States
+local Features = {
+    ESP = false,
+    ESPDistance = false,
+    ESPGun = false,
+    Fly = false,
+    NoClip = false,
+    Speed = false,
+    JumpPower = false,
+    GodMode = false
+}
+
+-- Feature Settings
+local Settings = {
+    ESPColor = Color3.fromRGB(0, 255, 0),
+    ESPDistanceColor = Color3.fromRGB(255, 255, 0),
+    ESPGunColor = Color3.fromRGB(255, 0, 0),
+    FlySpeed = 50,
+    WalkSpeed = 16,
+    JumpPower = 50,
+    SpeedMultiplier = 2
+}
+
+-- ESP Variables
+local ESPFolder = Instance.new("Folder")
+ESPFolder.Name = "ESP"
+ESPFolder.Parent = game.CoreGui
+
+local ESPConnections = {}
+local FlyConnection = nil
+local OriginalWalkSpeed = 16
+local OriginalJumpPower = 50
+
+-- Command Handler
+local function ExecuteCommand(command)
+    local args = {}
+    for word in command:gmatch("%S+") do
+        table.insert(args, word:lower())
+    end
+    
+    if #args == 0 then return end
+    
+    local cmd = args[1]
+    
+    if cmd == "features" or cmd == "help" then
+        print("=== AVAILABLE FEATURES ===")
+        print("esp [on/off] - Toggle player ESP")
+        print("espdistance [on/off] - Toggle distance ESP")
+        print("espgun [on/off] - Toggle gun ESP")
+        print("fly [on/off] - Toggle flying")
+        print("noclip [on/off] - Toggle noclip")
+        print("speed [value] - Set walk speed")
+        print("jump [value] - Set jump power")
+        print("godmode [on/off] - Toggle god mode")
+        print("settings - Show current settings")
+        print("==========================")
+        
+    elseif cmd == "esp" then
+        if args[2] == "on" then
+            Features.ESP = true
+            CreateESP()
+            print("ESP: ON")
+        elseif args[2] == "off" then
+            Features.ESP = false
+            ClearESP()
+            print("ESP: OFF")
+        end
+        
+    elseif cmd == "espdistance" then
+        if args[2] == "on" then
+            Features.ESPDistance = true
+            print("Distance ESP: ON")
+        elseif args[2] == "off" then
+            Features.ESPDistance = false
+            print("Distance ESP: OFF")
+        end
+        
+    elseif cmd == "espgun" then
+        if args[2] == "on" then
+            Features.ESPGun = true
+            print("Gun ESP: ON")
+        elseif args[2] == "off" then
+            Features.ESPGun = false
+            print("Gun ESP: OFF")
+        end
+        
+    elseif cmd == "fly" then
+        if args[2] == "on" then
+            Features.Fly = true
+            StartFlying()
+            print("Fly: ON")
+        elseif args[2] == "off" then
+            Features.Fly = false
+            StopFlying()
+            print("Fly: OFF")
+        end
+        
+    elseif cmd == "noclip" then
+        if args[2] == "on" then
+            Features.NoClip = true
+            print("NoClip: ON")
+        elseif args[2] == "off" then
+            Features.NoClip = false
+            print("NoClip: OFF")
+        end
+        
+    elseif cmd == "speed" then
+        local speed = tonumber(args[2])
+        if speed then
+            Settings.WalkSpeed = speed
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = speed
+            end
+            print("Speed set to: " .. speed)
+        end
+        
+    elseif cmd == "jump" then
+        local jump = tonumber(args[2])
+        if jump then
+            Settings.JumpPower = jump
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = jump
+            end
+            print("Jump power set to: " .. jump)
+        end
+        
+    elseif cmd == "godmode" then
+        if args[2] == "on" then
+            Features.GodMode = true
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+            print("God Mode: ON")
+        elseif args[2] == "off" then
+            Features.GodMode = false
+            print("God Mode: OFF")
+        end
+        
+    elseif cmd == "settings" then
+        print("=== CURRENT SETTINGS ===")
+        for setting, value in pairs(Settings) do
+            print(setting .. ": " .. tostring(value))
+        end
+        print("=========================")
+        
+    else
+        print("Unknown command. Type 'features' for available commands.")
+    end
+end
+
+-- ESP Functions
+function CreateESP()
+    ClearESP()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local connection
+            connection = player.CharacterAdded:Connect(function(character)
+                AddESP(character, player.Name)
+            end)
+            
+            table.insert(ESPConnections, connection)
+            
+            if player.Character then
+                AddESP(player.Character, player.Name)
+            end
+        end
+    end
+    
+    local playerAddedConnection = Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(character)
+            if Features.ESP then
+                AddESP(character, player.Name)
+            end
+        end)
+    end)
+    
+    table.insert(ESPConnections, playerAddedConnection)
+end
+
+function AddESP(character, playerName)
+    if not character then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = playerName .. "_ESP"
+    highlight.FillColor = Settings.ESPColor
+    highlight.OutlineColor = Settings.ESPColor
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.Parent = ESPFolder
+    highlight.Adornee = character
+    
+    -- Add distance label if enabled
+    if Features.ESPDistance then
+        local billboard = Instance.new("BillboardGui")
+        local label = Instance.new("TextLabel")
+        
+        billboard.Name = playerName .. "_Distance"
+        billboard.Adornee = character:WaitForChild("Head")
+        billboard.Size = UDim2.new(0, 100, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = ESPFolder
+        
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = playerName
+        label.TextColor3 = Settings.ESPDistanceColor
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.Parent = billboard
+        
+        -- Update distance
+        local distanceConnection
+        distanceConnection = RunService.Heartbeat:Connect(function()
+            if character and character:FindFirstChild("Head") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+                local distance = (character.Head.Position - LocalPlayer.Character.Head.Position).Magnitude
+                label.Text = playerName .. "\n" .. math.floor(distance) .. " studs"
+            else
+                distanceConnection:Disconnect()
+            end
+        end)
+        
+        table.insert(ESPConnections, distanceConnection)
+    end
+    
+    -- Add gun ESP if enabled
+    if Features.ESPGun then
+        local function checkForGuns()
+            for _, tool in pairs(character:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local gunHighlight = Instance.new("Highlight")
+                    gunHighlight.Name = playerName .. "_Gun"
+                    gunHighlight.FillColor = Settings.ESPGunColor
+                    gunHighlight.OutlineColor = Settings.ESPGunColor
+                    gunHighlight.FillTransparency = 0.3
+                    gunHighlight.OutlineTransparency = 0
+                    gunHighlight.Parent = ESPFolder
+                    gunHighlight.Adornee = tool
+                end
+            end
+        end
+        
+        checkForGuns()
+        character.ChildAdded:Connect(checkForGuns)
+    end
+end
+
+function ClearESP()
+    for _, connection in pairs(ESPConnections) do
+        connection:Disconnect()
+    end
+    ESPConnections = {}
+    
+    ESPFolder:ClearAllChildren()
+end
+
+-- Fly System
+function StartFlying()
+    StopFlying()
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    humanoid.PlatformStand = true
+    
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "FlyVelocity"
+    bodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("UpperTorso")
+    
+    FlyConnection = RunService.Heartbeat:Connect(function()
+        if not Features.Fly or not character or not character:FindFirstChild("HumanoidRootPart") then
+            StopFlying()
+            return
+        end
+        
+        local rootPart = character.HumanoidRootPart
+        local camera = Workspace.CurrentCamera
+        
+        local direction = Vector3.new(0, 0, 0)
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            direction = direction + camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            direction = direction - camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            direction = direction - camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            direction = direction + camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            direction = direction + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            direction = direction - Vector3.new(0, 1, 0)
+        end
+        
+        if direction.Magnitude > 0 then
+            direction = direction.Unit * Settings.FlySpeed
+        end
+        
+        bodyVelocity.Velocity = direction
+    end)
+end
+
+function StopFlying()
+    if FlyConnection then
+        FlyConnection:Disconnect()
+        FlyConnection = nil
+    end
+    
+    local character = LocalPlayer.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+        
+        local flyVelocity = character:FindFirstChild("FlyVelocity")
+        if flyVelocity then
+            flyVelocity:Destroy()
+        end
+    end
+end
+
+-- NoClip System
+local NoClipConnection
+function UpdateNoClip()
+    if NoClipConnection then
+        NoClipConnection:Disconnect()
+    end
+    
+    if Features.NoClip then
+        NoClipConnection = RunService.Stepped:Connect(function()
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    end
+end
+
+-- Chat Command System
+local function onChatMessage(message, recipient, speaker)
+    if speaker == LocalPlayer then
+        if string.sub(message, 1, 1) == "/" then
+            local command = string.sub(message, 2)
+            ExecuteCommand(command)
+        end
+    end
+end
+
+-- Initialize
+local function initialize()
+    -- Save original values
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        OriginalWalkSpeed = LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed
+        OriginalJumpPower = LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower
+    end
+    
+    -- Listen for chat messages
+    if game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents") then
+        local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+        if chatEvents:FindFirstChild("OnMessageDoneFiltering") then
+            chatEvents.OnMessageDoneFiltering.OnClientEvent:Connect(onChatMessage)
+        end
+    end
+    
+    -- Character added event
+    LocalPlayer.CharacterAdded:Connect(function(character)
+        wait(1) -- Wait for character to load
+        
+        if Features.Fly then
+            StartFlying()
+        end
+        
+        if Features.GodMode then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+        
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = Settings.WalkSpeed
+            humanoid.JumpPower = Settings.JumpPower
+        end
+    end)
+    
+    -- Update NoClip when toggled
+    UpdateNoClip()
+    
+    print("Feature system loaded! Type '/features' in chat to see available commands.")
+end
+
+-- Start the system
+initialize()
